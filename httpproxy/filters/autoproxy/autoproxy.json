@@ -41,6 +41,9 @@
 	"MobileConfig": {
 		"Enabled": true,
 	},
+	"IPHTML": {
+		"Enabled": true,
+	},
 	"BlackList": {
 		"Enabled": false,
 		"SiteRules": [
