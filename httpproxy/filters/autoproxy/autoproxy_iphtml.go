@@ -35,9 +35,7 @@ func (f *Filter) IPHTMLRoundTrip(ctx context.Context, req *http.Request) (contex
 		return ctx, nil, err
 	}
 
-	tpl := string(tpl0)
-	tpl = strings.Replace(tpl, "<!-- BEGIN IPHTML COMMENT", "", -1)
-	tpl = strings.Replace(tpl, "END IPHTML COMMENT -->", "", -1)
+	tpl := strings.Replace(string(tpl0), "IPHTMLVISABLE", "1", 1)
 
 	t, err := template.New("ip").Parse(tpl)
 	if err != nil {

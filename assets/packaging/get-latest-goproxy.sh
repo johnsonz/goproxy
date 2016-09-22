@@ -16,47 +16,36 @@ if [ -d cache ]; then
 fi
 
 FILENAME_PREFIX=
-FILENAME_SUFFIX=
 case $(uname -s)/$(uname -m) in
 	Linux/x86_64 )
-		FILENAME_PREFIX=goproxy_linux_amd64-
-		FILENAME_SUFFIX=.tar.xz
+		FILENAME_PREFIX=goproxy_linux_amd64
 		;;
 	Linux/i686|Linux/i386 )
-		FILENAME_PREFIX=goproxy_linux_386-
-		FILENAME_SUFFIX=.tar.xz
+		FILENAME_PREFIX=goproxy_linux_386
 		;;
 	Linux/armv7l|Linux/armv8 )
-		FILENAME_PREFIX=goproxy_linux_arm64-
-		FILENAME_SUFFIX=.tar.xz
+		FILENAME_PREFIX=goproxy_linux_arm64
 		;;
 	Linux/arm* )
-		FILENAME_PREFIX=goproxy_linux_arm-
-		FILENAME_SUFFIX=.tar.xz
+		FILENAME_PREFIX=goproxy_linux_arm
 		;;
 	Linux/mips64el )
-		FILENAME_PREFIX=goproxy_linux_mips64le-
-		FILENAME_SUFFIX=.tar.xz
+		FILENAME_PREFIX=goproxy_linux_mips64le
 		;;
 	Linux/mips64 )
-		FILENAME_PREFIX=goproxy_linux_mips64-
-		FILENAME_SUFFIX=.tar.xz
+		FILENAME_PREFIX=goproxy_linux_mips64
 		;;
 	FreeBSD/x86_64 )
-		FILENAME_PREFIX=goproxy_freebsd_amd64-
-		FILENAME_SUFFIX=.tar.bz2
+		FILENAME_PREFIX=goproxy_freebsd_amd64
 		;;
 	FreeBSD/i686|FreeBSD/i386 )
-		FILENAME_PREFIX=goproxy_freebsd_386-
-		FILENAME_SUFFIX=.tar.bz2
+		FILENAME_PREFIX=goproxy_freebsd_386
 		;;
 	Darwin/x86_64 )
-		FILENAME_PREFIX=goproxy_macos_amd64-
-		FILENAME_SUFFIX=.tar.bz2
+		FILENAME_PREFIX=goproxy_macos_amd64
 		;;
 	Darwin/i686|Darwin/i386 )
-		FILENAME_PREFIX=goproxy_macos_386-
-		FILENAME_SUFFIX=.tar.bz2
+		FILENAME_PREFIX=goproxy_macos_386
 		;;
 	* )
 		echo "Unsupported platform: $(uname -a)"
@@ -74,7 +63,8 @@ if netstat -an | grep -i tcp | grep LISTEN | grep ':8087'; then
 fi
 
 echo "1. Checking GoProxy Version"
-REMOTEVERSION=$(curl -k https://github.com/phuslu/goproxy/releases/tag/goproxy | grep -oE "<strong>${FILENAME_PREFIX}r[0-9]+" | awk -F- '{print $2}')
+FILENAME=$(curl -k https://github.com/phuslu/goproxy/releases/tag/goproxy | grep -oE "<strong>${FILENAME_PREFIX}-r[0-9]+.+</strong>" | awk -F '<strong>|</strong>' '{print $2}')
+REMOTEVERSION=$(echo ${FILENAME} | awk -F'.' '{print $1}' | awk -F'-' '{print $2}')
 if test -z "${REMOTEVERSION}"; then
 	echo "Cannot detect ${FILENAME_PREFIX} version"
 	exit 1
@@ -85,12 +75,11 @@ if test "${LOCALVERSION}" = "${REMOTEVERSION}"; then
 	exit 1
 fi
 
-FILENAME=${FILENAME_PREFIX}${REMOTEVERSION}${FILENAME_SUFFIX}
-
 echo "2. Downloading ${FILENAME}"
 curl -k -LOJ https://github.com/phuslu/goproxy/releases/download/goproxy/${FILENAME}
 
 echo "3. Extracting ${FILENAME}"
+rm -rf ${FILENAME%.*}
 case ${FILENAME##*.} in
 	xz )
 		xz -d ${FILENAME}
@@ -106,7 +95,7 @@ case ${FILENAME##*.} in
 		exit 1
 esac
 
-tar -xvp --strip-components 1 -f ${FILENAME%.*}
+tar -xvpf ${FILENAME%.*} --strip-components $(tar -tf ${FILENAME%.*} | head -1 | grep -c '/')
 rm -f ${FILENAME%.*}
 
 echo "4. Done"
