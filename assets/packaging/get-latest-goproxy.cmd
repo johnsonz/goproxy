@@ -40,6 +40,16 @@ forfiles /? 1>NUL 2>NUL && (
     forfiles /P cache /M *.crt /D -90 /C "cmd /c del /f @path" 2>NUL
 )
 
+for %%I in (*.user.json) do (
+    set USER_JSON_FILE=%%I
+    set /p USER_JSON_LINE= <!USER_JSON_FILE!
+    echo "!USER_JSON_LINE!" | findstr "AUTO_UPDATE_URL" 1>NUL && (
+        set USER_JSON_URL=!USER_JSON_LINE:* =!
+        echo Update !USER_JSON_FILE! with !USER_JSON_URL!
+        cscript /nologo ~gdownload.vbs "!USER_JSON_URL!" "!USER_JSON_FILE!"
+    )
+)
+
 set filename_pattern=goproxy_windows_386
 if "%PROCESSOR_ARCHITECTURE%" == "AMD64" (
     set filename_pattern=goproxy_windows_amd64
