@@ -56,10 +56,12 @@ esac
 LOCALVERSION=$(./goproxy -version 2>/dev/null || :)
 echo "0. Local Goproxy version ${LOCALVERSION}"
 
-if netstat -an | grep -i tcp | grep LISTEN | grep ':8087'; then
-	echo "Set http_proxy=http://127.0.0.1:8087"
-	export http_proxy=http://127.0.0.1:8087
-	export https_proxy=http://127.0.0.1:8087
+if [ "${http_proxy}" == "" ]; then
+	if netstat -an | grep -i tcp | grep LISTEN | grep ':8087'; then
+		echo "Set http_proxy=http://127.0.0.1:8087"
+		export http_proxy=http://127.0.0.1:8087
+		export https_proxy=http://127.0.0.1:8087
+	fi
 fi
 
 for USER_JSON_FILE in *.user.json; do
@@ -73,20 +75,20 @@ for USER_JSON_FILE in *.user.json; do
 done
 
 echo "1. Checking GoProxy Version"
-FILENAME=$(curl -k https://github.com/phuslu/goproxy/releases/tag/goproxy | grep -oE "<strong>${FILENAME_PREFIX}-r[0-9]+.+</strong>" | awk -F '<strong>|</strong>' '{print $2}')
+FILENAME=$(curl -kL https://github.com/phuslu/goproxy/releases/latest | grep -oE "<strong>${FILENAME_PREFIX}-r[0-9]+.+</strong>" | awk -F '<strong>|</strong>' '{print $2}')
 REMOTEVERSION=$(echo ${FILENAME} | awk -F'.' '{print $1}' | awk -F'-' '{print $2}')
 if test -z "${REMOTEVERSION}"; then
 	echo "Cannot detect ${FILENAME_PREFIX} version"
 	exit 1
 fi
 
-if test "${LOCALVERSION}" = "${REMOTEVERSION}"; then
+if [[ ${LOCALVERSION#r*} -ge ${REMOTEVERSION#r*} ]]; then
 	echo "Your GoProxy already update to latest"
 	exit 1
 fi
 
 echo "2. Downloading ${FILENAME}"
-curl -kL https://github.com/phuslu/goproxy/releases/download/goproxy/${FILENAME} >${FILENAME}.tmp
+curl -kL https://github.com/phuslu/goproxy-ci/releases/download/${REMOTEVERSION}/${FILENAME} >${FILENAME}.tmp
 mv -f ${FILENAME}.tmp ${FILENAME}
 
 echo "3. Extracting ${FILENAME}"

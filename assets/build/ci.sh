@@ -169,6 +169,11 @@ function build_repo() {
 		make clean
 	done
 
+	git archive --format=tar --prefix="goproxy-r${RELEASE}/" HEAD | xz > "${WORKING_DIR}/r${RELEASE}/source.tar.xz"
+
+	export GAE_RELEASE=$(git rev-list --count origin/server.gae)
+	git archive --format=zip --prefix="goproxy-r${GAE_RELEASE}/" origin/server.gae > "${WORKING_DIR}/r${RELEASE}/goproxy-gae-r${GAE_RELEASE}.zip"
+
 	cd ${WORKING_DIR}/r${RELEASE}
 	rename 's/_darwin_(amd64|386)/_macos_\1/' *
 	rename 's/_darwin_(arm64|arm)/_ios_\1/' *
@@ -182,6 +187,7 @@ function build_repo_ex() {
 
 	git checkout -f server.vps
 
+	git clone --branch ${GOBRANCH} https://github.com/phuslu/goproxy $GOPATH/src/github.com/phuslu/goproxy
 	awk 'match($1, /"((github\.com|golang\.org|gopkg\.in)\/.+)"/) {if (!seen[$1]++) {gsub("\"", "", $1); print $1}}' $(find . -name "*.go") | xargs -n1 -i go get -u -v {}
 
 	make

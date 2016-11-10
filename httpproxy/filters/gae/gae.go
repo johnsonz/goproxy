@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"flag"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -245,6 +246,15 @@ func NewFilter(config *Config) (filters.Filter, error) {
 
 	var tr http.RoundTripper
 
+	GetConnectMethodAddr := func(addr string) string {
+		if host, port, err := net.SplitHostPort(addr); err == nil {
+			if alias, ok := md.SiteToAlias.Lookup(host); ok {
+				addr = net.JoinHostPort(alias.(string), port)
+			}
+		}
+		return addr
+	}
+
 	t1 := &http.Transport{
 		Dial:                  md.Dial,
 		DialTLS:               md.DialTLS,
@@ -253,6 +263,7 @@ func NewFilter(config *Config) (filters.Filter, error) {
 		ResponseHeaderTimeout: time.Duration(config.Transport.ResponseHeaderTimeout) * time.Second,
 		IdleConnTimeout:       time.Duration(config.Transport.IdleConnTimeout) * time.Second,
 		MaxIdleConnsPerHost:   config.Transport.MaxIdleConnsPerHost,
+		GetConnectMethodAddr:  GetConnectMethodAddr,
 	}
 
 	if config.Transport.Proxy.Enabled {
@@ -319,13 +330,16 @@ func NewFilter(config *Config) (filters.Filter, error) {
 		go func() {
 			probe := func() {
 				req, _ := http.NewRequest(http.MethodGet, "https://clients3.google.com/generate_204", nil)
-				ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+				ctx, cancel := context.WithTimeout(req.Context(), 2*time.Second)
 				defer cancel()
 				req = req.WithContext(ctx)
 				resp, err := tr.RoundTrip(req)
-				if resp != nil && resp.Body != nil {
+				if resp != nil {
 					glog.V(3).Infof("GAE EnableDeadProbe \"%s %s\" %d -", req.Method, req.URL.String(), resp.StatusCode)
-					defer resp.Body.Close()
+					if resp.Body != nil {
+						io.Copy(ioutil.Discard, resp.Body)
+						resp.Body.Close()
+					}
 					if resp.StatusCode == http.StatusBadGateway {
 						if ip, err := helpers.ReflectRemoteIPFromResponse(resp); err == nil && ip != nil {
 							duration := 1 * time.Hour
@@ -344,7 +358,7 @@ func NewFilter(config *Config) (filters.Filter, error) {
 			}
 
 			for {
-				time.Sleep(time.Duration(5+rand.Intn(6)) * time.Second)
+				time.Sleep(time.Duration(2+rand.Intn(5)) * time.Second)
 				probe()
 			}
 		}()
